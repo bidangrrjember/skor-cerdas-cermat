@@ -182,9 +182,9 @@
                     <div class="text-xl font-extrabold text-gray-800 mb-2">${team.name}</div>
                     <div class="text-[5rem] font-black text-gray-900 mb-6 tracking-tighter leading-none" id="score-${team.id}">${team.score}</div>
                     <div class="grid grid-cols-2 gap-3">
-                        <button onclick="updateScore('${team.id}', 'correct')" class="bg-green-100 hover:bg-green-200 text-green-700 font-bold py-3 px-2 rounded-xl shadow-sm">Benar</button>
-                        <button onclick="updateScore('${team.id}', 'half')" class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold py-3 px-2 rounded-xl shadow-sm">Setengah</button>
-                        <button onclick="updateScore('${team.id}', 'wrong')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-3 px-2 rounded-xl shadow-sm">Salah</button>
+                        <button onclick="updateScore('${team.id}', 'correct')" class="bg-green-100 hover:bg-green-200 text-green-700 font-bold py-3 px-2 rounded-xl shadow-sm transition-colors">Benar</button>
+                        <button onclick="updateScore('${team.id}', 'wrong')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-3 px-2 rounded-xl shadow-sm transition-colors">Salah</button>
+                        <button onclick="updateScore('${team.id}', 'half')" class="col-span-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold py-3 px-2 rounded-xl shadow-sm transition-colors">Setengah</button>
                     </div>
                 `;
                 container.appendChild(card);
