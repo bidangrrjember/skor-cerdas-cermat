@@ -228,7 +228,6 @@
                 pts = rules.half;
                 soalSelesai = true; // Kunci soal untuk SEMUA tim
             } 
-            } 
             else if (action === 'wrong') {
                 pts = rules.wrong;
                 timSudahMenjawab.push(teamId); // Kunci hanya untuk tim ini saja (lemparan)
@@ -254,7 +253,6 @@
             void scoreEl.offsetWidth;
             scoreEl.classList.add('score-pop');
         }
-
         // --- 7. TOMBOL SOAL BERIKUTNYA ---
         function nextQuestion() {
             if (answeredQuestions >= totalQuestions) {
