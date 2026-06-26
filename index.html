@@ -73,10 +73,14 @@
     </div>
 
     <div id="scoreboardArea" class="hidden w-full max-w-7xl pb-20 mt-4">
-        <div class="flex justify-center mb-8">
+        <div class="flex justify-center items-center gap-4 mb-8">
             <div class="bg-white px-8 py-3 rounded-full shadow-sm border border-gray-100 font-semibold text-gray-500">
-                Soal Berjalan: <span id="currentQuestionCount" class="text-blue-600 font-black text-xl mx-2">0</span> / <span id="totalQuestionDisplay" class="font-black text-xl text-gray-800 ml-2">0</span>
+                Soal Berjalan: <span id="currentQuestionCount" class="text-blue-600 font-black text-xl mx-2">1</span> / <span id="totalQuestionDisplay" class="font-black text-xl text-gray-800 ml-2">0</span>
             </div>
+            <button onclick="nextQuestion()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-sm transition-all flex items-center gap-2">
+                Soal Berikutnya
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
         </div>
         
         <div id="teamsContainer" class="flex flex-wrap justify-center gap-6 mb-8">
@@ -156,6 +160,10 @@
 
             document.getElementById('totalQuestionDisplay').innerText = totalQuestions;
             
+            // Set angka awal soal ke 1
+            answeredQuestions = 1;
+            document.getElementById('currentQuestionCount').innerText = answeredQuestions;
+            
             document.getElementById('setupArea').classList.add('hidden');
             document.getElementById('waitingListArea').classList.add('hidden');
             document.getElementById('scoreboardArea').classList.remove('hidden');
@@ -190,11 +198,6 @@
 
         // --- 6. LOGIKA SKOR & BUZZER ---
         function updateScore(teamId, action) {
-            // Cek limit soal jika aksi memajukan soal (benar / setengah)
-            if (answeredQuestions >= totalQuestions && (action === 'correct' || action === 'half')) {
-                alert("Batas soal maksimal!"); return;
-            }
-
             // Hitung poin sesuai aksi
             let pts = 0;
             if (action === 'correct') pts = rules.correct;
@@ -203,12 +206,6 @@
             else if (action === 'pass') pts = rules.pass;
 
             teams[teamId].score += pts;
-            
-            // Majukan nomor soal jika dijawab benar atau setengah
-            if(action === 'correct' || action === 'half') {
-                answeredQuestions++;
-                document.getElementById('currentQuestionCount').innerText = answeredQuestions;
-            }
 
             const scoreEl = document.getElementById(`score-${teamId}`);
             scoreEl.innerText = teams[teamId].score;
@@ -218,6 +215,23 @@
             void scoreEl.offsetWidth;
             scoreEl.classList.add('score-pop');
         }
+
+        // Fungsi baru untuk lanjut soal
+        function nextQuestion() {
+            if (answeredQuestions >= totalQuestions) {
+                alert("Ini sudah soal terakhir! Lomba selesai.");
+                return;
+            }
+            
+            // Majukan angka soal
+            answeredQuestions++;
+            document.getElementById('currentQuestionCount').innerText = answeredQuestions;
+            
+            // Sekalian mereset buzzer tim agar siap untuk rebutan soal baru
+            resetBuzzer();
+        }
+
+        function listenToBuzzer() {
 
         function listenToBuzzer() {
             db.ref(`rooms/${roomId}/buzzer_winner`).on('value', (snapshot) => {
@@ -252,6 +266,17 @@
             
             document.getElementById('btnResetBuzzer').classList.add('hidden');
             document.getElementById('btnResetBuzzer').classList.remove('flex');
+        }
+        // --- 7. KEMBALI KE PENGATURAN AWAL ---
+        function kembaliKeAwal() {
+            if(confirm("Yakin ingin mengakhiri pertandingan? Semua skor dan data tim saat ini akan direset.")) {
+                // Hapus data room di Firebase agar database bersih untuk lomba selanjutnya
+                db.ref(`rooms/${roomId}`).remove().then(() => {
+                    location.reload(); // Refresh halaman
+                }).catch(() => {
+                    location.reload(); // Tetap refresh walau gagal hapus database
+                });
+            }
         }
     </script>
 </body>
