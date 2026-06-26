@@ -25,10 +25,10 @@
         <h1 id="namaTim" class="text-3xl font-black text-white mb-8 bg-gray-800 px-6 py-2 rounded-full border border-gray-700">Tim Kamu</h1>
         
         <button id="btnBuzzer" onclick="tekanBuzzer()" class="w-72 h-72 rounded-full bg-red-600 border-[12px] border-red-800 shadow-[0_0_60px_rgba(220,38,38,0.4)] active:bg-red-700 active:border-red-900 active:scale-95 transition-all outline-none flex items-center justify-center select-none">
-            <span class="text-white font-black text-4xl tracking-widest uppercase pointer-events-none">Rebut!</span>
+            <span class="text-white font-black text-4xl tracking-widest uppercase pointer-events-none"></span>
         </button>
         
-        <p id="status" class="text-gray-400 mt-10 font-semibold text-lg text-center px-4">Siap untuk memencet...</p>
+        <p id="status" class="text-gray-400 mt-10 font-semibold text-lg text-center px-4">Siap untuk ditekan...</p>
     </div>
 
     <script>
@@ -121,7 +121,7 @@
                     btnBuzzer.classList.replace('border-blue-800', 'border-red-800');
                     btnBuzzer.classList.replace('bg-gray-600', 'bg-red-600');
                     btnBuzzer.classList.replace('border-gray-800', 'border-red-800');
-                    statusEl.innerText = "Siap untuk memencet...";
+                    statusEl.innerText = "Siap untuk ditekan...";
                 } 
                 else if (winnerId !== myTeamId) {
                     // Tim lain yang duluan pencet, tombol kita di-lock dan jadi abu-abu
