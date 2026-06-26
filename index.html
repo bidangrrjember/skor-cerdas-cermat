@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papan Skor Layar Utama</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .score-pop { animation: pop 0.2s ease-out; }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.15); color: #2563eb; } 100% { transform: scale(1); } }
+        .kedip-pemenang { animation: blink 0.3s infinite; border: 4px solid #ef4444; transform: scale(1.05); }
+        @keyframes blink { 0% { background-color: #fee2e2; } 50% { background-color: #fca5a5; } 100% { background-color: #fee2e2; } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 text-gray-800">
+
+    <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight mb-8 mt-4">
+        <span class="text-blue-600">Skor</span> Cerdas Cermat
+    </h1>
+
+    <div id="setupArea" class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 w-full max-w-4xl flex gap-8">
+        
+        <div class="flex-1 border-r border-gray-100 pr-8">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-100 pb-4">Aturan Poin</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-500 mb-2">Total Soal</label>
+                    <input type="number" id="numQuestions" value="10" class="w-full px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 font-semibold text-gray-700 outline-none focus:border-blue-500">
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-green-600 mb-1">Benar (+)</label>
+                        <input type="number" id="ptsCorrect" value="10" class="w-full px-3 py-2 rounded-xl bg-green-50 border border-green-200 text-green-700 font-bold text-center outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-red-600 mb-1">Salah (-)</label>
+                        <input type="number" id="ptsWrong" value="-5" class="w-full px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 font-bold text-center outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Pass (0)</label>
+                        <input type="number" id="ptsPass" value="0" class="w-full px-3 py-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-700 font-bold text-center outline-none">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col items-center justify-center">
+            <h3 class="text-sm font-bold text-gray-500 mb-2">Scan untuk Masuk Tim</h3>
+            <div class="bg-white p-2 border-2 border-dashed border-gray-300 rounded-xl mb-4">
+                <img id="qrCodeImg" src="" alt="QR Code" class="w-48 h-48 object-contain">
+            </div>
+            <div class="text-xs text-gray-400 mb-6 text-center" id="urlText">Memuat URL...</div>
+            
+            <button onclick="startMatch()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition-all text-lg">
+                Mulai Pertandingan
+            </button>
+        </div>
+    </div>
+
+    <div id="waitingListArea" class="mt-8 w-full max-w-4xl text-center">
+        <h3 class="font-bold text-gray-500 mb-4">Tim yang sudah bergabung:</h3>
+        <div id="waitingTeams" class="flex flex-wrap justify-center gap-3">
+            <span class="text-sm text-gray-400 italic">Belum ada tim yang scan QR...</span>
+        </div>
+    </div>
+
+    <div id="scoreboardArea" class="hidden w-full max-w-7xl pb-20 mt-4">
+        <div class="flex justify-center mb-8">
+            <div class="bg-white px-8 py-3 rounded-full shadow-sm border border-gray-100 font-semibold text-gray-500">
+                Soal Berjalan: <span id="currentQuestionCount" class="text-blue-600 font-black text-xl mx-2">0</span> / <span id="totalQuestionDisplay" class="font-black text-xl text-gray-800 ml-2">0</span>
+            </div>
+        </div>
+        
+        <div id="teamsContainer" class="flex flex-wrap justify-center gap-6 mb-8">
+            </div>
+
+        <div class="flex justify-center">
+            <button onclick="resetBuzzer()" id="btnResetBuzzer" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all hidden items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Reset Tombol Buzzer
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. FIREBASE CONFIG (GANTI DENGAN MILIKMU) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDEeDXBl8dUiObp5tPlbI2Itztra8jYxfE",
+            authDomain: "cerdas-cermat-bpbd.firebaseapp.com",
+            databaseURL: "https://cerdas-cermat-bpbd-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cerdas-cermat-bpbd"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // --- 2. SETUP RUANGAN & QR CODE ---
+        // Buat ID Ruangan acak (5 karakter)
+        const roomId = Math.random().toString(36).substring(2, 7).toUpperCase();
+        
+        // Cek Protocol (Harus HTTP/HTTPS untuk QR)
+        const currentUrl = window.location.href.split('?')[0];
+        if (currentUrl.startsWith('file://')) {
+            alert("PERINGATAN: Kamu membuka file ini langsung dari komputer (file://). QR Code tidak akan bisa di-scan dari HP. Silakan gunakan Live Server atau Host di GitHub Pages.");
+        }
+
+        // Generate URL untuk HP
+        const buzzerUrl = currentUrl.replace('index.html', '') + 'buzzer.html?room=' + roomId;
+        document.getElementById('urlText').innerText = buzzerUrl;
+        document.getElementById('qrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=10&data=${encodeURIComponent(buzzerUrl)}`;
+
+        // Variabel Global
+        let rules = {};
+        let teams = {}; // Format object: { "idFirebase": { name: "Tim A", score: 0 } }
+        let totalQuestions = 0, answeredQuestions = 0;
+        let buzzerTerkunci = false;
+
+        // --- 3. DENGARKAN TIM YANG BERGABUNG SEBELUM MULAI ---
+        db.ref(`rooms/${roomId}/teams`).on('child_added', (snapshot) => {
+            const teamId = snapshot.key;
+            const teamData = snapshot.val();
+            
+            // Simpan ke memory lokal
+            teams[teamId] = { name: teamData.name, score: 0, id: teamId };
+            
+            // Update UI Waiting List
+            const waitingDiv = document.getElementById('waitingTeams');
+            if(Object.keys(teams).length === 1) waitingDiv.innerHTML = ''; // Hapus teks default
+            
+            waitingDiv.innerHTML += `<span class="bg-blue-100 text-blue-800 font-bold px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">${teamData.name}</span>`;
+            
+            // Jika pertandingan sudah mulai tapi ada yang baru join (telat), langsung render ulang papan skor
+            if(document.getElementById('setupArea').classList.contains('hidden')) {
+                renderScoreboard();
+            }
+        });
+
+        // --- 4. MULAI PERTANDINGAN ---
+        function startMatch() {
+            if(Object.keys(teams).length === 0) {
+                if(!confirm("Belum ada tim yang mendaftar. Yakin ingin memulai?")) return;
+            }
+
+            totalQuestions = parseInt(document.getElementById('numQuestions').value);
+            rules = {
+                correct: parseInt(document.getElementById('ptsCorrect').value),
+                wrong: parseInt(document.getElementById('ptsWrong').value),
+                pass: parseInt(document.getElementById('ptsPass').value)
+            };
+
+            document.getElementById('totalQuestionDisplay').innerText = totalQuestions;
+            
+            document.getElementById('setupArea').classList.add('hidden');
+            document.getElementById('waitingListArea').classList.add('hidden');
+            document.getElementById('scoreboardArea').classList.remove('hidden');
+            
+            renderScoreboard();
+            listenToBuzzer(); // Aktifkan sensor buzzer
+        }
+
+        // --- 5. RENDER PAPAN SKOR ---
+        function renderScoreboard() {
+            const container = document.getElementById('teamsContainer');
+            container.innerHTML = '';
+
+            Object.values(teams).forEach((team) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex-1 min-w-[280px] max-w-[350px] text-center transition-all duration-300';
+                card.id = `card-${team.id}`;
+                card.innerHTML = `
+                    <div class="text-xl font-extrabold text-gray-800 mb-2">${team.name}</div>
+                    <div class="text-[5rem] font-black text-gray-900 mb-6 tracking-tighter leading-none" id="score-${team.id}">${team.score}</div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="updateScore('${team.id}', 'correct')" class="bg-green-100 hover:bg-green-200 text-green-700 font-bold py-2 px-1 rounded-xl shadow-sm">Benar</button>
+                        <button onclick="updateScore('${team.id}', 'wrong')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 px-1 rounded-xl shadow-sm">Salah</button>
+                        <button onclick="updateScore('${team.id}', 'pass')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-1 rounded-xl shadow-sm">Pass</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- 6. LOGIKA SKOR & BUZZER ---
+        function updateScore(teamId, action) {
+            if (answeredQuestions >= totalQuestions && action === 'correct') {
+                alert("Batas soal maksimal!"); return;
+            }
+
+            let pts = (action === 'correct') ? rules.correct : (action === 'wrong' ? rules.wrong : rules.pass);
+            teams[teamId].score += pts;
+            
+            if(action === 'correct') {
+                answeredQuestions++;
+                document.getElementById('currentQuestionCount').innerText = answeredQuestions;
+            }
+
+            const scoreEl = document.getElementById(`score-${teamId}`);
+            scoreEl.innerText = teams[teamId].score;
+            
+            // Animasi update
+            scoreEl.classList.remove('score-pop');
+            void scoreEl.offsetWidth;
+            scoreEl.classList.add('score-pop');
+        }
+
+        function listenToBuzzer() {
+            db.ref(`rooms/${roomId}/buzzer_winner`).on('value', (snapshot) => {
+                const winnerId = snapshot.val();
+                
+                // Jika ada yang nekan dan belum terkunci
+                if (winnerId && !buzzerTerkunci && teams[winnerId]) {
+                    buzzerTerkunci = true;
+                    
+                    // Bikin kartu tim pemenang berkedip
+                    document.getElementById(`card-${winnerId}`).classList.add('kedip-pemenang');
+                    
+                    // Tampilkan tombol reset panitia
+                    document.getElementById('btnResetBuzzer').classList.remove('hidden');
+                    document.getElementById('btnResetBuzzer').classList.add('flex');
+                    
+                    // Efek suara (Sound API JS)
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    osc.connect(audioCtx.destination);
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+                }
+            });
+        }
+
+        function resetBuzzer() {
+            // Kosongkan database
+            db.ref(`rooms/${roomId}/buzzer_winner`).set(null);
+            buzzerTerkunci = false;
+            
+            // Hilangkan semua efek kedip
+            Object.values(teams).forEach(t => {
+                const el = document.getElementById(`card-${t.id}`);
+                if(el) el.classList.remove('kedip-pemenang');
+            });
+            
+            // Sembunyikan tombol reset
+            document.getElementById('btnResetBuzzer').classList.add('hidden');
+            document.getElementById('btnResetBuzzer').classList.remove('flex');
+        }
+    </script>
+</body>
+</html>
