@@ -83,6 +83,16 @@
         <div id="teamsContainer" class="flex flex-wrap justify-center gap-6 mb-8">
             </div>
 
+        <div class="w-full max-w-3xl mx-auto bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-8">
+            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 flex justify-between items-center border-b border-gray-100 pb-3">
+                Log Aktivitas
+                <span class="bg-gray-100 text-gray-500 py-1 px-3 rounded-full text-xs font-semibold" id="historyCount">0 Aksi</span>
+            </h3>
+            <div id="historyList" class="h-48 overflow-y-auto space-y-2 pr-2">
+                <div class="text-gray-400 text-sm italic text-center mt-16">Belum ada aktivitas.</div>
+            </div>
+        </div>
+
         <div class="flex flex-col items-center gap-4 mt-10">
             <button onclick="resetBuzzer()" id="btnResetBuzzer" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all hidden items-center gap-2">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -126,6 +136,7 @@
         let buzzerTerkunci = false;
         let timSudahMenjawab = []; 
         let soalSelesai = false;
+        let historyLog = [];
 
         // --- 3. LISTENER TIM BERGABUNG ---
         db.ref(`rooms/${roomId}/teams`).on('child_added', (snapshot) => {
@@ -217,12 +228,24 @@
                 pts = rules.half;
                 soalSelesai = true; // Kunci soal untuk SEMUA tim
             } 
+            } 
             else if (action === 'wrong') {
                 pts = rules.wrong;
                 timSudahMenjawab.push(teamId); // Kunci hanya untuk tim ini saja (lemparan)
             }
 
             teams[teamId].score += pts;
+
+            // --- TAMBAHAN PENCATAT LOG ---
+            historyLog.unshift({
+                teamName: teams[teamId].name,
+                action: action,
+                points: pts,
+                question: answeredQuestions,
+                time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            });
+            renderHistoryUI(); // Update tampilan log
+            // -----------------------------
 
             const scoreEl = document.getElementById(`score-${teamId}`);
             scoreEl.innerText = teams[teamId].score;
@@ -295,6 +318,53 @@
                 });
             }
         }
+
+        // --- 10. RENDER LOG AKTIVITAS ---
+        function renderHistoryUI() {
+            const historyList = document.getElementById('historyList');
+            const historyCount = document.getElementById('historyCount');
+
+            historyCount.innerText = `${historyLog.length} Aksi`;
+
+            if (historyLog.length === 0) {
+                historyList.innerHTML = `<div class="text-gray-400 text-sm italic text-center mt-16">Belum ada aktivitas.</div>`;
+                return;
+            }
+
+            historyList.innerHTML = '';
+            
+            historyLog.forEach((log) => {
+                let badgeClass = "";
+                let actionText = "";
+                
+                if (log.action === 'correct') { 
+                    badgeClass = "bg-green-100 text-green-700 border-green-200"; 
+                    actionText = "Benar"; 
+                } else if (log.action === 'half') { 
+                    badgeClass = "bg-yellow-100 text-yellow-700 border-yellow-200"; 
+                    actionText = "Setengah"; 
+                } else if (log.action === 'wrong') { 
+                    badgeClass = "bg-red-100 text-red-700 border-red-200"; 
+                    actionText = "Salah"; 
+                }
+
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-2xl border border-gray-100 text-sm transition-all hover:bg-gray-100';
+                item.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <span class="text-xs text-gray-400 font-mono w-16">${log.time}</span>
+                        <span class="font-bold text-gray-600 bg-white px-2 py-1 rounded shadow-sm text-xs border border-gray-100">Soal ${log.question}</span>
+                        <span class="font-extrabold text-gray-800">${log.teamName}</span>
+                        <span class="px-2 py-1 rounded text-[11px] font-bold border uppercase tracking-wider ${badgeClass}">${actionText}</span>
+                    </div>
+                    <div class="font-black ${log.points > 0 ? 'text-green-600' : 'text-red-600'} text-lg">
+                        ${log.points > 0 ? '+' : ''}${log.points}
+                    </div>
+                `;
+                historyList.appendChild(item);
+            });
+        }
+        
     </script>
 </body>
 </html>
