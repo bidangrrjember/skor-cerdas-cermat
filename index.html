@@ -44,10 +44,6 @@
                         <label class="block text-xs font-semibold text-red-600 mb-1">Salah</label>
                         <input type="number" id="ptsWrong" value="-5" class="w-full px-2 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 font-bold text-center outline-none">
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Pass</label>
-                        <input type="number" id="ptsPass" value="0" class="w-full px-2 py-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-700 font-bold text-center outline-none">
-                    </div>
                 </div>
             </div>
         </div>
@@ -156,8 +152,7 @@
             rules = {
                 correct: parseInt(document.getElementById('ptsCorrect').value),
                 half: parseInt(document.getElementById('ptsHalf').value),
-                wrong: parseInt(document.getElementById('ptsWrong').value),
-                pass: parseInt(document.getElementById('ptsPass').value)
+                wrong: parseInt(document.getElementById('ptsWrong').value)
             };
 
             document.getElementById('totalQuestionDisplay').innerText = totalQuestions;
@@ -190,7 +185,6 @@
                         <button onclick="updateScore('${team.id}', 'correct')" class="bg-green-100 hover:bg-green-200 text-green-700 font-bold py-3 px-2 rounded-xl shadow-sm">Benar</button>
                         <button onclick="updateScore('${team.id}', 'half')" class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold py-3 px-2 rounded-xl shadow-sm">Setengah</button>
                         <button onclick="updateScore('${team.id}', 'wrong')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-3 px-2 rounded-xl shadow-sm">Salah</button>
-                        <button onclick="updateScore('${team.id}', 'pass')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-2 rounded-xl shadow-sm">Pass</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -203,7 +197,6 @@
             if (action === 'correct') pts = rules.correct;
             else if (action === 'half') pts = rules.half;
             else if (action === 'wrong') pts = rules.wrong;
-            else if (action === 'pass') pts = rules.pass;
 
             teams[teamId].score += pts;
 
