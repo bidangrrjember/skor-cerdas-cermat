@@ -135,7 +135,6 @@
         let totalQuestions = 0, answeredQuestions = 0;
         let buzzerTerkunci = false;
         let timSudahMenjawab = []; 
-        let soalSelesai = false;
         let historyLog = [];
 
         // --- 3. LISTENER TIM BERGABUNG ---
@@ -206,32 +205,26 @@
 
         // --- 6. LOGIKA SKOR ---
         function updateScore(teamId, action) {
-            // 1. Cek apakah soal sudah ditutup (karena sudah ada yang jawab benar/setengah)
-            if (soalSelesai) {
-                alert("Soal ini sudah selesai ditutup! Silakan klik 'Soal Berikutnya'.");
-                return;
-            }
-
-            // 2. Cek apakah tim ini sudah pernah menjawab (dan salah) di soal ini
+            // Cek apakah tim ini sudah pernah dinilai di soal ini
             if (timSudahMenjawab.includes(teamId)) {
-                alert("Tim ini sudah dinilai dan tidak bisa menjawab lagi di soal ini!");
+                alert("Tim ini sudah dinilai pada soal ini!");
                 return;
             }
 
-            // 3. Hitung poin & tentukan kunci
+            // Hitung poin
             let pts = 0;
             if (action === 'correct') {
                 pts = rules.correct;
-                soalSelesai = true; // Kunci soal untuk SEMUA tim
             } 
             else if (action === 'half') {
                 pts = rules.half;
-                soalSelesai = true; // Kunci soal untuk SEMUA tim
             } 
             else if (action === 'wrong') {
                 pts = rules.wrong;
-                timSudahMenjawab.push(teamId); // Kunci hanya untuk tim ini saja (lemparan)
             }
+
+            // Kunci HANYA tim ini agar tidak bisa diklik dua kali di soal yang sama
+            timSudahMenjawab.push(teamId);
 
             teams[teamId].score += pts;
 
@@ -262,14 +255,12 @@
             answeredQuestions++;
             document.getElementById('currentQuestionCount').innerText = answeredQuestions;
             
-            // Buka kembali gembok soal dan reset daftar tim yang sudah menjawab
-            soalSelesai = false;
+            // Reset daftar tim yang sudah menjawab untuk soal baru
             timSudahMenjawab = [];
 
             // Otomatis reset buzzer agar tim bisa rebutan soal baru
             resetBuzzer();
         }
-
         // --- 8. LOGIKA BUZZER FIREBASE ---
         function listenToBuzzer() {
             db.ref(`rooms/${roomId}/buzzer_winner`).on('value', (snapshot) => {
