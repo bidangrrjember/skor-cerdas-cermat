@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skor Cerdas Cermat</title>
+    <title>Papan Skor Layar Utama</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -55,9 +55,9 @@
         <div class="flex-1 flex flex-col items-center justify-center">
             <h3 class="text-sm font-bold text-gray-500 mb-2">Scan untuk Masuk Tim</h3>
             <div class="bg-white p-2 border-2 border-dashed border-gray-300 rounded-xl mb-4">
-                <img id="qrCodeImg" src="" alt="QR Code" class="w-48 h-48 object-contain">
+                <img id="qrCodeImg" src="" alt="Menunggu QR..." class="w-48 h-48 object-contain">
             </div>
-            <div class="text-xs text-gray-400 mb-6 text-center" id="urlText">Memuat URL...</div>
+            <div class="text-[10px] text-gray-400 mb-6 text-center break-all px-4" id="urlText">Memuat URL...</div>
             
             <button onclick="startMatch()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition-all text-lg">
                 Mulai Pertandingan
@@ -73,6 +73,7 @@
     </div>
 
     <div id="scoreboardArea" class="hidden w-full max-w-7xl pb-20 mt-4">
+        
         <div class="flex justify-center items-center gap-4 mb-8">
             <div class="bg-white px-8 py-3 rounded-full shadow-sm border border-gray-100 font-semibold text-gray-500">
                 Soal Berjalan: <span id="currentQuestionCount" class="text-blue-600 font-black text-xl mx-2">1</span> / <span id="totalQuestionDisplay" class="font-black text-xl text-gray-800 ml-2">0</span>
@@ -86,11 +87,12 @@
         <div id="teamsContainer" class="flex flex-wrap justify-center gap-6 mb-8">
             </div>
 
-        <div class="flex justify-center">
+        <div class="flex flex-col items-center gap-4 mt-10">
             <button onclick="resetBuzzer()" id="btnResetBuzzer" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all hidden items-center gap-2">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 Reset Tombol Buzzer
             </button>
+
             <button onclick="kembaliKeAwal()" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-8 rounded-full shadow-md transition-all flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 Akhiri Pertandingan & Kembali
@@ -99,7 +101,7 @@
     </div>
 
     <script>
-        // --- 1. FIREBASE CONFIG (GANTI DENGAN MILIKMU) ---
+        // --- 1. FIREBASE CONFIG (PASTIKAN GANTI DENGAN MILIKMU!) ---
         const firebaseConfig = {
             apiKey: "AIzaSyDEeDXBl8dUiObp5tPlbI2Itztra8jYxfE",
             authDomain: "cerdas-cermat-bpbd.firebaseapp.com",
@@ -109,24 +111,25 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // --- 2. SETUP RUANGAN & QR CODE ---
+        // --- 2. SETUP RUANGAN & BIKIN QR CODE ---
         const roomId = Math.random().toString(36).substring(2, 7).toUpperCase();
         
-        const currentUrl = window.location.href.split('?')[0];
-        if (currentUrl.startsWith('file://')) {
-            alert("PERINGATAN: Gunakan Live Server atau Host di GitHub Pages.");
-        }
+        // Logika baru agar link aman di GitHub Pages
+        const urlObj = new URL(window.location.href);
+        let basePath = urlObj.origin + urlObj.pathname.replace(/\/index\.html$/, '');
+        if(!basePath.endsWith('/')) basePath += '/';
+        const buzzerUrl = basePath + 'buzzer.html?room=' + roomId;
 
-        const buzzerUrl = currentUrl.replace('index.html', '') + 'buzzer.html?room=' + roomId;
         document.getElementById('urlText').innerText = buzzerUrl;
-        document.getElementById('qrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=10&data=${encodeURIComponent(buzzerUrl)}`;
+        // Menggunakan QuickChart API yang jarang diblokir
+        document.getElementById('qrCodeImg').src = `https://quickchart.io/qr?size=250&text=${encodeURIComponent(buzzerUrl)}`;
 
         let rules = {};
         let teams = {}; 
         let totalQuestions = 0, answeredQuestions = 0;
         let buzzerTerkunci = false;
 
-        // --- 3. DENGARKAN TIM YANG BERGABUNG SEBELUM MULAI ---
+        // --- 3. LISTENER TIM BERGABUNG ---
         db.ref(`rooms/${roomId}/teams`).on('child_added', (snapshot) => {
             const teamId = snapshot.key;
             const teamData = snapshot.val();
@@ -146,11 +149,10 @@
         // --- 4. MULAI PERTANDINGAN ---
         function startMatch() {
             if(Object.keys(teams).length === 0) {
-                if(!confirm("Belum ada tim yang mendaftar. Yakin ingin memulai?")) return;
+                if(!confirm("Belum ada tim yang mendaftar via QR. Yakin ingin memulai?")) return;
             }
 
             totalQuestions = parseInt(document.getElementById('numQuestions').value);
-            // Tambahkan aturan nilai setengah
             rules = {
                 correct: parseInt(document.getElementById('ptsCorrect').value),
                 half: parseInt(document.getElementById('ptsHalf').value),
@@ -160,7 +162,7 @@
 
             document.getElementById('totalQuestionDisplay').innerText = totalQuestions;
             
-            // Set angka awal soal ke 1
+            // Soal dimulai dari angka 1
             answeredQuestions = 1;
             document.getElementById('currentQuestionCount').innerText = answeredQuestions;
             
@@ -172,7 +174,7 @@
             listenToBuzzer();
         }
 
-        // --- 5. RENDER PAPAN SKOR ---
+        // --- 5. RENDER KARTU SKOR ---
         function renderScoreboard() {
             const container = document.getElementById('teamsContainer');
             container.innerHTML = '';
@@ -181,7 +183,6 @@
                 const card = document.createElement('div');
                 card.className = 'bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex-1 min-w-[280px] max-w-[350px] text-center transition-all duration-300';
                 card.id = `card-${team.id}`;
-                // Layout grid diubah menjadi grid-cols-2 (2x2) untuk 4 tombol
                 card.innerHTML = `
                     <div class="text-xl font-extrabold text-gray-800 mb-2">${team.name}</div>
                     <div class="text-[5rem] font-black text-gray-900 mb-6 tracking-tighter leading-none" id="score-${team.id}">${team.score}</div>
@@ -196,9 +197,8 @@
             });
         }
 
-        // --- 6. LOGIKA SKOR & BUZZER ---
+        // --- 6. LOGIKA SKOR ---
         function updateScore(teamId, action) {
-            // Hitung poin sesuai aksi
             let pts = 0;
             if (action === 'correct') pts = rules.correct;
             else if (action === 'half') pts = rules.half;
@@ -210,29 +210,25 @@
             const scoreEl = document.getElementById(`score-${teamId}`);
             scoreEl.innerText = teams[teamId].score;
             
-            // Animasi update
             scoreEl.classList.remove('score-pop');
             void scoreEl.offsetWidth;
             scoreEl.classList.add('score-pop');
         }
 
-        // Fungsi baru untuk lanjut soal
+        // --- 7. TOMBOL SOAL BERIKUTNYA ---
         function nextQuestion() {
             if (answeredQuestions >= totalQuestions) {
-                alert("Ini sudah soal terakhir! Lomba selesai.");
+                alert("Ini sudah batas maksimal soal. Lomba telah selesai!");
                 return;
             }
-            
-            // Majukan angka soal
             answeredQuestions++;
             document.getElementById('currentQuestionCount').innerText = answeredQuestions;
             
-            // Sekalian mereset buzzer tim agar siap untuk rebutan soal baru
+            // Otomatis reset buzzer agar tim bisa rebutan soal baru
             resetBuzzer();
         }
 
-        function listenToBuzzer() {
-
+        // --- 8. LOGIKA BUZZER FIREBASE ---
         function listenToBuzzer() {
             db.ref(`rooms/${roomId}/buzzer_winner`).on('value', (snapshot) => {
                 const winnerId = snapshot.val();
@@ -241,10 +237,10 @@
                     buzzerTerkunci = true;
                     
                     document.getElementById(`card-${winnerId}`).classList.add('kedip-pemenang');
-                    
                     document.getElementById('btnResetBuzzer').classList.remove('hidden');
                     document.getElementById('btnResetBuzzer').classList.add('flex');
                     
+                    // Bunyi tet-tot
                     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
                     osc.connect(audioCtx.destination);
@@ -267,14 +263,14 @@
             document.getElementById('btnResetBuzzer').classList.add('hidden');
             document.getElementById('btnResetBuzzer').classList.remove('flex');
         }
-        // --- 7. KEMBALI KE PENGATURAN AWAL ---
+
+        // --- 9. KEMBALI KE AWAL ---
         function kembaliKeAwal() {
-            if(confirm("Yakin ingin mengakhiri pertandingan? Semua skor dan data tim saat ini akan direset.")) {
-                // Hapus data room di Firebase agar database bersih untuk lomba selanjutnya
+            if(confirm("Yakin ingin mengakhiri pertandingan? Semua skor dan data tim saat ini akan dihapus.")) {
                 db.ref(`rooms/${roomId}`).remove().then(() => {
-                    location.reload(); // Refresh halaman
+                    location.reload();
                 }).catch(() => {
-                    location.reload(); // Tetap refresh walau gagal hapus database
+                    location.reload();
                 });
             }
         }
