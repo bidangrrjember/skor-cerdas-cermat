@@ -31,18 +31,22 @@
                     <label class="block text-sm font-semibold text-gray-500 mb-2">Total Soal</label>
                     <input type="number" id="numQuestions" value="10" class="w-full px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 font-semibold text-gray-700 outline-none focus:border-blue-500">
                 </div>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-4 gap-2">
                     <div>
-                        <label class="block text-xs font-semibold text-green-600 mb-1">Benar (+)</label>
-                        <input type="number" id="ptsCorrect" value="10" class="w-full px-3 py-2 rounded-xl bg-green-50 border border-green-200 text-green-700 font-bold text-center outline-none">
+                        <label class="block text-xs font-semibold text-green-600 mb-1">Benar</label>
+                        <input type="number" id="ptsCorrect" value="10" class="w-full px-2 py-2 rounded-xl bg-green-50 border border-green-200 text-green-700 font-bold text-center outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-red-600 mb-1">Salah (-)</label>
-                        <input type="number" id="ptsWrong" value="-5" class="w-full px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 font-bold text-center outline-none">
+                        <label class="block text-xs font-semibold text-yellow-600 mb-1">Setengah</label>
+                        <input type="number" id="ptsHalf" value="5" class="w-full px-2 py-2 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 font-bold text-center outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">Pass (0)</label>
-                        <input type="number" id="ptsPass" value="0" class="w-full px-3 py-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-700 font-bold text-center outline-none">
+                        <label class="block text-xs font-semibold text-red-600 mb-1">Salah</label>
+                        <input type="number" id="ptsWrong" value="-5" class="w-full px-2 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 font-bold text-center outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Pass</label>
+                        <input type="number" id="ptsPass" value="0" class="w-full px-2 py-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-700 font-bold text-center outline-none">
                     </div>
                 </div>
             </div>
@@ -89,32 +93,28 @@
     <script>
         // --- 1. FIREBASE CONFIG (GANTI DENGAN MILIKMU) ---
         const firebaseConfig = {
-            apiKey: "AIzaSyDEeDXBl8dUiObp5tPlbI2Itztra8jYxfE",
-            authDomain: "cerdas-cermat-bpbd.firebaseapp.com",
-            databaseURL: "https://cerdas-cermat-bpbd-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "cerdas-cermat-bpbd"
+            apiKey: "AIzaSyXXXXXXX",
+            authDomain: "project-kamu.firebaseapp.com",
+            databaseURL: "https://project-kamu.firebasedatabase.app",
+            projectId: "project-kamu"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         // --- 2. SETUP RUANGAN & QR CODE ---
-        // Buat ID Ruangan acak (5 karakter)
         const roomId = Math.random().toString(36).substring(2, 7).toUpperCase();
         
-        // Cek Protocol (Harus HTTP/HTTPS untuk QR)
         const currentUrl = window.location.href.split('?')[0];
         if (currentUrl.startsWith('file://')) {
-            alert("PERINGATAN: Kamu membuka file ini langsung dari komputer (file://). QR Code tidak akan bisa di-scan dari HP. Silakan gunakan Live Server atau Host di GitHub Pages.");
+            alert("PERINGATAN: Gunakan Live Server atau Host di GitHub Pages.");
         }
 
-        // Generate URL untuk HP
         const buzzerUrl = currentUrl.replace('index.html', '') + 'buzzer.html?room=' + roomId;
         document.getElementById('urlText').innerText = buzzerUrl;
         document.getElementById('qrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=10&data=${encodeURIComponent(buzzerUrl)}`;
 
-        // Variabel Global
         let rules = {};
-        let teams = {}; // Format object: { "idFirebase": { name: "Tim A", score: 0 } }
+        let teams = {}; 
         let totalQuestions = 0, answeredQuestions = 0;
         let buzzerTerkunci = false;
 
@@ -123,16 +123,13 @@
             const teamId = snapshot.key;
             const teamData = snapshot.val();
             
-            // Simpan ke memory lokal
             teams[teamId] = { name: teamData.name, score: 0, id: teamId };
             
-            // Update UI Waiting List
             const waitingDiv = document.getElementById('waitingTeams');
-            if(Object.keys(teams).length === 1) waitingDiv.innerHTML = ''; // Hapus teks default
+            if(Object.keys(teams).length === 1) waitingDiv.innerHTML = '';
             
             waitingDiv.innerHTML += `<span class="bg-blue-100 text-blue-800 font-bold px-3 py-1 rounded-full text-sm border border-blue-200 shadow-sm">${teamData.name}</span>`;
             
-            // Jika pertandingan sudah mulai tapi ada yang baru join (telat), langsung render ulang papan skor
             if(document.getElementById('setupArea').classList.contains('hidden')) {
                 renderScoreboard();
             }
@@ -145,8 +142,10 @@
             }
 
             totalQuestions = parseInt(document.getElementById('numQuestions').value);
+            // Tambahkan aturan nilai setengah
             rules = {
                 correct: parseInt(document.getElementById('ptsCorrect').value),
+                half: parseInt(document.getElementById('ptsHalf').value),
                 wrong: parseInt(document.getElementById('ptsWrong').value),
                 pass: parseInt(document.getElementById('ptsPass').value)
             };
@@ -158,7 +157,7 @@
             document.getElementById('scoreboardArea').classList.remove('hidden');
             
             renderScoreboard();
-            listenToBuzzer(); // Aktifkan sensor buzzer
+            listenToBuzzer();
         }
 
         // --- 5. RENDER PAPAN SKOR ---
@@ -170,13 +169,15 @@
                 const card = document.createElement('div');
                 card.className = 'bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex-1 min-w-[280px] max-w-[350px] text-center transition-all duration-300';
                 card.id = `card-${team.id}`;
+                // Layout grid diubah menjadi grid-cols-2 (2x2) untuk 4 tombol
                 card.innerHTML = `
                     <div class="text-xl font-extrabold text-gray-800 mb-2">${team.name}</div>
                     <div class="text-[5rem] font-black text-gray-900 mb-6 tracking-tighter leading-none" id="score-${team.id}">${team.score}</div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button onclick="updateScore('${team.id}', 'correct')" class="bg-green-100 hover:bg-green-200 text-green-700 font-bold py-2 px-1 rounded-xl shadow-sm">Benar</button>
-                        <button onclick="updateScore('${team.id}', 'wrong')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 px-1 rounded-xl shadow-sm">Salah</button>
-                        <button onclick="updateScore('${team.id}', 'pass')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-1 rounded-xl shadow-sm">Pass</button>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="updateScore('${team.id}', 'correct')" class="bg-green-100 hover:bg-green-200 text-green-700 font-bold py-3 px-2 rounded-xl shadow-sm">Benar</button>
+                        <button onclick="updateScore('${team.id}', 'half')" class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold py-3 px-2 rounded-xl shadow-sm">Setengah</button>
+                        <button onclick="updateScore('${team.id}', 'wrong')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-3 px-2 rounded-xl shadow-sm">Salah</button>
+                        <button onclick="updateScore('${team.id}', 'pass')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-2 rounded-xl shadow-sm">Pass</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -185,14 +186,22 @@
 
         // --- 6. LOGIKA SKOR & BUZZER ---
         function updateScore(teamId, action) {
-            if (answeredQuestions >= totalQuestions && action === 'correct') {
+            // Cek limit soal jika aksi memajukan soal (benar / setengah)
+            if (answeredQuestions >= totalQuestions && (action === 'correct' || action === 'half')) {
                 alert("Batas soal maksimal!"); return;
             }
 
-            let pts = (action === 'correct') ? rules.correct : (action === 'wrong' ? rules.wrong : rules.pass);
+            // Hitung poin sesuai aksi
+            let pts = 0;
+            if (action === 'correct') pts = rules.correct;
+            else if (action === 'half') pts = rules.half;
+            else if (action === 'wrong') pts = rules.wrong;
+            else if (action === 'pass') pts = rules.pass;
+
             teams[teamId].score += pts;
             
-            if(action === 'correct') {
+            // Majukan nomor soal jika dijawab benar atau setengah
+            if(action === 'correct' || action === 'half') {
                 answeredQuestions++;
                 document.getElementById('currentQuestionCount').innerText = answeredQuestions;
             }
@@ -210,18 +219,14 @@
             db.ref(`rooms/${roomId}/buzzer_winner`).on('value', (snapshot) => {
                 const winnerId = snapshot.val();
                 
-                // Jika ada yang nekan dan belum terkunci
                 if (winnerId && !buzzerTerkunci && teams[winnerId]) {
                     buzzerTerkunci = true;
                     
-                    // Bikin kartu tim pemenang berkedip
                     document.getElementById(`card-${winnerId}`).classList.add('kedip-pemenang');
                     
-                    // Tampilkan tombol reset panitia
                     document.getElementById('btnResetBuzzer').classList.remove('hidden');
                     document.getElementById('btnResetBuzzer').classList.add('flex');
                     
-                    // Efek suara (Sound API JS)
                     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
                     osc.connect(audioCtx.destination);
@@ -233,17 +238,14 @@
         }
 
         function resetBuzzer() {
-            // Kosongkan database
             db.ref(`rooms/${roomId}/buzzer_winner`).set(null);
             buzzerTerkunci = false;
             
-            // Hilangkan semua efek kedip
             Object.values(teams).forEach(t => {
                 const el = document.getElementById(`card-${t.id}`);
                 if(el) el.classList.remove('kedip-pemenang');
             });
             
-            // Sembunyikan tombol reset
             document.getElementById('btnResetBuzzer').classList.add('hidden');
             document.getElementById('btnResetBuzzer').classList.remove('flex');
         }
